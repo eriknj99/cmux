@@ -62,6 +62,7 @@ updateState () {
     echo "done."
 }
 
+#
 copyState () {
     #Get the directory of the selected state
     currentState="$STATEDIR/$1"
