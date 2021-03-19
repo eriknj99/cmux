@@ -1,0 +1,211 @@
+#!/bin/bash
+
+STATEDIR="$HOME/.config/cmux/states"
+
+#If the states dir does not exist create it. This should only be executed on first run
+[ ! -d "$STATEDIR" ] && mkdir -p "$STATEDIR"
+
+
+# Copy the selected files ($1) to the selected state ($2). Create a new state if necessary. 
+addToState () {
+    echo "Adding file $1 to state $2..."
+    #Get the directory of the selected state
+    currentState="$STATEDIR/$2"
+    
+    #If the state does not exist, create it.
+    [ ! -d "$currentState" ] && mkdir "$currentState" && echo "Created State: $2"
+    
+    #Copy the config file including its full parent dir structure to the cmux
+    sudo cp --parents -rp "$1" "$currentState"
+
+    echo "done."
+}
+
+# Apply the selected state
+applyState () {
+
+    #Get the directory of the selected state
+    currentState="$STATEDIR/$1"
+    
+    #If the state does not exist, Exit
+    [ ! -d "$currentState" ] && echo "State: $1 does not exist" && return 
+
+    echo "Applying $1..."
+
+    #Copy the state to root
+    sudo cp -rp "$currentState/"* /
+    
+    echo "done."
+}
+
+# Update the config files of selected state with all of the config files currently in use
+updateState () {
+    #Get the directory of the selected state
+    currentState="$STATEDIR/$1"
+    
+    #If the state does not exist, Exit
+    [ ! -d "$currentState" ] && echo "State: $1 does not exist" && return 
+
+    echo "Updating $1 with the current configuration..."
+
+    #Copy the config files from root to the state directory 
+    cd "$currentState" && find -type f | while read line; do
+        sudo cp -p "${line:1}" "$line"
+    done
+
+    # cd back to the execution directory
+    cd ../..
+
+    echo "done."
+}
+
+copyState () {
+    #Get the directory of the selected state
+    currentState="$STATEDIR/$1"
+    newState="$STATEDIR/$2"
+     
+    #If the state does not exist, Exit
+    [ ! -d "$currentState" ] && echo "State: $1 does not exist" && return 
+   
+    echo "Copying $1 to $2..."
+    sudo cp -rp "$currentState" "$newState"    
+    echo "done."
+}
+
+# Removes the selected state
+rmState () {
+    #Get the directory of the selected state
+    currentState="$STATEDIR/$1"
+    
+    #If the state does not exist, Exit
+    [ ! -d "$currentState" ] && echo "State: $1 does not exist" && return 
+   
+    echo "Removing $1"
+    sudo rm -rf "$currentState"
+}
+
+# List all of the states
+listStates () {
+    ls "$STATEDIR"
+}
+
+# List the contents of a specific state with tree
+listState () {
+    tree "$STATEDIR/$1"
+}
+
+
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -a|add)
+    ADDFILE="$2"
+    ADDSTATE="$3"
+    shift # past argument
+    shift # past value
+    shift # past value
+    ;;
+    -r|rm)
+    RMSTATE="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -l|ls)
+    ls=true
+    LS1="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -A|apply)
+    APPLY="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -u|update)
+    UPDATE="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -c|cp)
+    COPYFROM="$2"
+    COPYTO="$3"
+    shift # past argument
+    shift # past value
+    shift # past value
+    ;;
+    -h|help)
+    HELP=true
+    shift
+    ;;
+    *)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [[ "$HELP" = true ]] 
+then
+    echo "
+ _____ _____ _____ __ __ 
+|     |     |  |  |  |  |
+|   --| | | |  |  |-   -|
+|_____|_|_|_|_____|__|__|
+By Erik Olsen 
+
+--Help--
+-a|add <File> <State>   : Adds <File> to <State>
+-c|cp <State1> <State2> : Copy state <State1> to state <State2>
+-r|rm <State>           : Removes state <State>
+-l|ls                   : Lists all states
+-l|ls <State>           : Lists the contents of <State> as a tree
+-A|apply <State>        : Apply <State> by copying its contents to the original locations
+-u|update <State>       : Updates the files of <State> with the current files
+-h|help                 : Display this text
+
+Warning: CMUX does not contain any safety features. Be careful what you type because all changes are perminant.
+"
+fi
+
+if [[ ! -z "$RMSTATE" ]] 
+then
+   rmState $RMSTATE 
+fi
+
+if [[ "$ls" = true ]] && [[ -z "$LS1" ]] 
+then
+    listStates
+fi
+
+
+
+if [[ "$ls" = true ]] && [[ ! -z "$LS1" ]] 
+then
+    listState $LS1
+fi
+
+if [[ ! -z "$ADDFILE" ]] && [[ ! -z "$ADDSTATE" ]]
+then
+    addToState $ADDFILE $ADDSTATE
+fi
+
+if [[ ! -z "$COPYFROM" ]] && [[ ! -z "$COPYTO" ]]
+then
+    copyState $COPYFROM $COPYTO
+fi
+
+if [[ ! -z "$APPLY" ]]
+then
+    applyState $APPLY
+fi
+
+if [[ ! -z "$UPDATE" ]]
+then
+    updateState $UPDATE
+fi
+
