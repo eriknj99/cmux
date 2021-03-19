@@ -15,7 +15,8 @@ addToState () {
     #If the state does not exist, create it.
     [ ! -d "$currentState" ] && mkdir "$currentState" && echo "Created State: $2"
     
-    #Copy the config file including its full parent dir structure to the cmux
+    #Copy the config file including its full parent dir structure to $STATEDIR
+    # Exclude $STATEDIR from copy to prevent recursion 
     sudo cp --parents -rp "$1" "$currentState"
 
     echo "done."
@@ -34,6 +35,8 @@ applyState () {
 
     #Copy the state to root
     sudo cp -rp "$currentState/"* /
+
+
     
     echo "done."
 }
